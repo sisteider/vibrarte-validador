@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validador QR - Vibrarte Sertao 2025</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { color: #333; font-size: 24px; }
+        .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; text-align: center; }
+        .stat-box { background: #f5f5f5; padding: 12px; border-radius: 8px; }
+        .stat-box h3 { font-size: 11px; color: #999; margin-bottom: 5px; }
+        .stat-box .number { font-size: 24px; font-weight: bold; color: #667eea; }
+        
+        .stats-category { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; text-align: center; }
+        .stat-box.platino { background: #E8F5E9; }
+        .stat-box.platino .number { color: #1B5E20; }
+        .stat-box.vip { background: #E3F2FD; }
+        .stat-box.vip .number { color: #0D47A1; }
+        .stat-box.general { background: #FFF3E0; }
+        .stat-box.general .number { color: #E65100; }
+        
+        .result {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+            text-align: center;
+        }
+        .result.success { background: #d4edda; border: 2px solid #28a745; color: #155724; }
+        .result.error { background: #f8d7da; border: 2px solid #dc3545; color: #721c24; }
+        
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            background: #667eea;
+            color: white;
+        }
+        .btn:hover { background: #5568d3; }
+        .btn-secondary { background: #f5f5f5; color: #333; }
+        .btn-secondary:hover { background: #e0e0e0; }
+        
+        .input-section {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .input-section input {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .input-section input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px #667eea;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        
+        table th {
+            background: #667eea;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        
+        table td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        table tr.success { background: #d4edda; }
+        table tr.error { background: #f8d7da; }
+        
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎫 Validador QR Vibrarte</h1>
+            <p>Sistema de Control de Acceso - Evento 2025</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <h3>Total Cargado</h3>
+                <div class="number" id="totalTickets">0</div>
+            </div>
+            <div class="stat-box">
+                <h3>Validados</h3>
+                <div class="number" id="validatedCount">0</div>
+            </div>
+            <div class="stat-box">
+                <h3>Duplicados</h3>
+                <div class="number" id="duplicateCount">0</div>
+            </div>
+        </div>
+
+        <div class="stats-category">
+            <div class="stat-box platino">
+                <h3>🏆 PLATINO</h3>
+                <div class="number" id="platinoCount">0</div>
+            </div>
+            <div class="stat-box vip">
+                <h3>⭐ VIP</h3>
+                <div class="number" id="vipCount">0</div>
+            </div>
+            <div class="stat-box general">
+                <h3>👥 GENERAL</h3>
+                <div class="number" id="generalCount">0</div>
+            </div>
+        </div>
+        
+        <div id="result" class="result"></div>
+        
+        <div class="input-section">
+            <label style="font-size: 14px; font-weight: bold; color: #333;">🔍 BUSCAR MANUALMENTE (si no tiene QR):</label>
+            <input type="text" id="searchInput" placeholder="Busca por: Cédula, Apellido o Silla..." autocomplete="off">
+            <div id="searchResults" style="margin-top: 10px; display: none; background: #f0f0f0; border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto;"></div>
+        </div>
+
+        <div class="input-section">
+            <label style="font-size: 14px; font-weight: bold; color: #333;">📱 O escanea el código QR:</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <input type="text" id="qrInput" placeholder="Código QR..." autocomplete="off">
+                <button class="btn" id="scanBtn" onclick="abrirCamara()">📸 Escanear</button>
+            </div>
+            <video id="video" style="display: none; width: 100%; border-radius: 8px; margin-top: 10px;"></video>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-secondary" onclick="exportarTabla()">📥 Descargar CSV</button>
+            <button class="btn" style="background: #dc3545;" onclick="mostrarModalLimpiar()">🗑️ Limpiar (con contraseña)</button>
+        </div>
+
+        <!-- Modal Limpiar -->
+        <div id="modalLimpiar" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; flex-direction: column;">
+            <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                <h2 style="margin-bottom: 20px; color: #333;">🔐 Limpiar Registros</h2>
+                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">⚠️ Esto borrará todos los registros de validations en Firebase</p>
+                <input type="password" id="passwordLimpiar" placeholder="Ingresa contraseña" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 15px; font-size: 14px;">
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="confirmarLimpiar()" style="flex: 1; padding: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Limpiar</button>
+                    <button onclick="cerrarModalLimpiar()" style="flex: 1; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Cancelar</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Categoría</th>
+                        <th>Silla</th>
+                        <th>Hora</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://rawcdn.githack.com/davidshimjs/qrcodejs/gh-pages/qrcode.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/qrcode@0.0.1"></script>
+    
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPj08dOp_2BDh03Rgf8z2qFYa7MIa31aQ",
+            authDomain: "evento-validador-2025.firebaseapp.com",
+            projectId: "evento-validador-2025",
+            storageBucket: "evento-validador-2025.firebasestorage.app",
+            messagingSenderId: "575806749961",
+            appId: "1:575806749961:web:0aed00e91ac8a3901f27d8"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let validatedTickets = new Set();
+        let duplicateTickets = new Set();
+        let allTickets = [];
+        let countByCategory = { 'PLATINO': 0, 'VIP': 0, 'GENERAL': 0 };
+        let lastScanCode = null;
+        let lastScanTime = 0;
+
+        async function loadTickets() {
+            try {
+                const snapshot = await db.collection('tickets').get();
+                allTickets = [];
+                snapshot.forEach(doc => {
+                    allTickets.push({ id: doc.id, ...doc.data() });
+                });
+                updateStats();
+                showResult('✅ Sistema listo - ' + allTickets.length + ' tickets cargados', 'success');
+            } catch (error) {
+                showResult('⚠️ Error: ' + error.message, 'error');
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalTickets').textContent = allTickets.length;
+            document.getElementById('validatedCount').textContent = validatedTickets.size;
+            document.getElementById('duplicateCount').textContent = duplicateTickets.size;
+            document.getElementById('platinoCount').textContent = countByCategory['PLATINO'];
+            document.getElementById('vipCount').textContent = countByCategory['VIP'];
+            document.getElementById('generalCount').textContent = countByCategory['GENERAL'];
+        }
+
+        function getHoraActual() {
+            const now = new Date();
+            return now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function validateTicket(code) {
+            const now = Date.now();
+            if (code === lastScanCode && now - lastScanTime < 2000) {
+                return;
+            }
+            lastScanCode = code;
+            lastScanTime = now;
+
+            code = code.trim();
+            if (!code) return;
+
+            // Si es JSON, extraer el codigo_unico
+            let codigoFinal = code;
+            try {
+                if (code.startsWith('{')) {
+                    const json = JSON.parse(code);
+                    codigoFinal = json.codigo_unico || code;
+                    console.log('✅ JSON detectado, código extraído:', codigoFinal);
+                }
+            } catch (e) {
+                // No es JSON, usar como está
+                console.log('ℹ️ No es JSON, código directo:', codigoFinal);
+            }
+
+            const ticket = allTickets.find(t => t.qr_code === codigoFinal);
+
+            if (!ticket) {
+                showResult('❌ TICKET NO ENCONTRADO\n' + codigoFinal, 'error');
+                addToTable(codigoFinal, 'DESCONOCIDO', '?', 'NO VÁLIDO', '?', getHoraActual(), 'error');
+                return;
+            }
+
+            if (validatedTickets.has(codigoFinal)) {
+                duplicateTickets.add(codigoFinal);
+                updateStats();
+                showResult(`⚠️ DUPLICADO\n${ticket.nombre}\nYa fue escaneado`, 'error');
+                addToTable(codigoFinal, ticket.nombre, ticket.email || '?', ticket.tipo, ticket.asiento || '?', getHoraActual(), 'error');
+                return;
+            }
+
+            validatedTickets.add(codigoFinal);
+            countByCategory[ticket.tipo]++;
+            updateStats();
+            
+            showResult(`✅ ACCESO PERMITIDO\n${ticket.nombre}\n${ticket.tipo}\nSilla: ${ticket.asiento || 'N/A'}`, 'success');
+            addToTable(codigoFinal, ticket.nombre, ticket.email || '?', ticket.tipo, ticket.asiento || '?', getHoraActual(), 'success');
+
+            saveValidation(codigoFinal, ticket);
+        }
+
+        async function saveValidation(code, ticket) {
+            try {
+                await db.collection('validations').add({
+                    qr_code: code,
+                    nombre: ticket.nombre,
+                    tipo: ticket.tipo,
+                    asiento: ticket.asiento || '',
+                    validated_at: firebase.firestore.Timestamp.now(),
+                    estado: 'Validado'
+                });
+            } catch (err) {
+                console.error('Error guardando:', err);
+            }
+        }
+
+        function addToTable(code, nombre, cedula, categoria, silla, hora, clase) {
+            const tbody = document.getElementById('tableBody');
+            const row = document.createElement('tr');
+            row.className = clase;
+            row.innerHTML = `
+                <td>${tbody.children.length + 1}</td>
+                <td><strong>${nombre}</strong></td>
+                <td>${cedula}</td>
+                <td>${categoria}</td>
+                <td>${silla}</td>
+                <td>${hora}</td>
+            `;
+            tbody.insertBefore(row, tbody.firstChild);
+            while (tbody.children.length > 50) {
+                tbody.removeChild(tbody.lastChild);
+            }
+        }
+
+        // Búsqueda manual
+        document.getElementById('searchInput').addEventListener('keyup', (e) => {
+            const termino = e.target.value.toLowerCase().trim();
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (!termino || termino.length < 1) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+
+            const resultados = allTickets.filter(t => {
+                const nombre = (t.nombre || '').toLowerCase();
+                const asiento = (t.asiento || t.silla || '').toLowerCase();
+                const email = (t.email || '').toLowerCase();
+                const qr_code = (t.qr_code || '').toLowerCase();
+                const tipo = (t.tipo || '').toLowerCase();
+                
+                return nombre.includes(termino) || 
+                       asiento.includes(termino) || 
+                       email.includes(termino) ||
+                       qr_code.includes(termino) ||
+                       tipo.includes(termino);
+            }).slice(0, 10);
+
+            if (resultados.length === 0) {
+                resultsDiv.innerHTML = '<p style="color: #999; font-size: 12px;">No se encontraron resultados</p>';
+                resultsDiv.style.display = 'block';
+                return;
+            }
+
+            resultsDiv.innerHTML = resultados.map(t => `
+                <div style="padding: 8px; background: white; margin-bottom: 5px; border-radius: 5px; cursor: pointer; border-left: 4px solid #667eea;" onclick="validarManual('${t.qr_code}')">
+                    <strong>${t.nombre}</strong><br>
+                    <small>Silla: ${t.asiento || '?'} | ${t.tipo} | ${t.email || 'N/A'}</small>
+                </div>
+            `).join('');
+            
+            resultsDiv.style.display = 'block';
+        });
+
+        function validarManual(codigo) {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResults').style.display = 'none';
+            validateTicket(codigo);
+        }
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<p>${message}</p>`;
+            resultDiv.className = `result ${type}`;
+            resultDiv.style.display = 'block';
+            setTimeout(() => { resultDiv.style.display = 'none'; }, 3000);
+        }
+
+        function limpiarTabla() {
+            if (confirm('¿Estás seguro? Se borrará todo')) {
+                validatedTickets.clear();
+                duplicateTickets.clear();
+                countByCategory = { 'PLATINO': 0, 'VIP': 0, 'GENERAL': 0 };
+                document.getElementById('tableBody').innerHTML = '';
+                updateStats();
+                showResult('✅ Tabla limpiada', 'success');
+            }
+        }
+
+        function mostrarModalLimpiar() {
+            document.getElementById('modalLimpiar').style.display = 'flex';
+            document.getElementById('passwordLimpiar').focus();
+        }
+
+        function cerrarModalLimpiar() {
+            document.getElementById('modalLimpiar').style.display = 'none';
+            document.getElementById('passwordLimpiar').value = '';
+        }
+
+        async function confirmarLimpiar() {
+            const password = document.getElementById('passwordLimpiar').value;
+            const passwordCorrect = 'admin123'; // CAMBIA ESTO POR TU CONTRASEÑA
+            
+            if (password !== passwordCorrect) {
+                showResult('❌ Contraseña incorrecta', 'error');
+                document.getElementById('passwordLimpiar').value = '';
+                return;
+            }
+
+            if (!confirm('⚠️ ¿SEGURO? Esto borrará TODOS los registros de validations en Firebase')) {
+                return;
+            }
+
+            try {
+                // Borrar de Firebase
+                const batch = db.batch();
+                const snapshot = await db.collection('validations').get();
+                
+                snapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                await batch.commit();
+
+                // Borrar localmente
+                validatedTickets.clear();
+                duplicateTickets.clear();
+                countByCategory = { 'PLATINO': 0, 'VIP': 0, 'GENERAL': 0 };
+                document.getElementById('tableBody').innerHTML = '';
+                updateStats();
+
+                showResult('✅ REGISTROS BORRADOS DE FIREBASE', 'success');
+                cerrarModalLimpiar();
+            } catch (error) {
+                console.error('Error limpiando Firebase:', error);
+                showResult('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        function exportarTabla() {
+            const table = document.getElementById('tableBody');
+            let csv = 'Nombre,Email,Categoría,Silla,Hora\n';
+            const rows = table.getElementsByTagName('tr');
+            for (let row of rows) {
+                const cells = row.getElementsByTagName('td');
+                csv += `"${cells[1].textContent}","${cells[2].textContent}","${cells[3].textContent}","${cells[4].textContent}","${cells[5].textContent}"\n`;
+            }
+            
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = 'validaciones_' + new Date().toISOString().slice(0, 10) + '.csv';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Evento para capturar entrada
+        document.getElementById('qrInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                validateTicket(e.target.value);
+                e.target.value = '';
+                e.target.focus();
+            }
+        });
+
+        let scanActive = false;
+        let stream = null;
+
+        async function abrirCamara() {
+            const video = document.getElementById('video');
+            const scanBtn = document.getElementById('scanBtn');
+            
+            if (scanActive) {
+                scanActive = false;
+                if (stream) {
+                    stream.getTracks().forEach(t => t.stop());
+                    stream = null;
+                }
+                video.style.display = 'none';
+                video.pause();
+                scanBtn.textContent = '📸 Escanear';
+                showResult('ℹ️ Cámara cerrada', 'success');
+                return;
+            }
+
+            try {
+                // Intentar con diferentes métodos
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' },
+                        audio: false
+                    });
+                } else if (navigator.getUserMedia) {
+                    stream = await new Promise((resolve, reject) => {
+                        navigator.getUserMedia({ video: { facingMode: 'environment' } }, resolve, reject);
+                    });
+                } else {
+                    showResult('❌ Tu navegador no soporta acceso a cámara', 'error');
+                    return;
+                }
+                
+                video.srcObject = stream;
+                video.style.display = 'block';
+                video.play();
+                
+                scanBtn.textContent = '⏹️ Detener';
+                scanActive = true;
+                showResult('✅ Cámara abierta - Apunta el QR', 'success');
+
+                iniciarDecodificacion(video);
+
+            } catch (err) {
+                console.error('Error:', err);
+                let msg = err.message;
+                
+                if (err.name === 'NotAllowedError') {
+                    msg = 'Permiso denegado. Autoriza en configuración del navegador.';
+                } else if (err.name === 'NotFoundError') {
+                    msg = 'No se encontró cámara.';
+                } else if (err.name === 'SecurityError') {
+                    msg = 'Requiere HTTPS o localhost.';
+                }
+                
+                showResult('❌ ' + msg, 'error');
+                scanActive = false;
+            }
+        }
+
+        function iniciarDecodificacion(video) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const procesarFrame = () => {
+                if (!scanActive || video.paused) return;
+
+                try {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    if (canvas.width === 0 || canvas.height === 0) {
+                        requestAnimationFrame(procesarFrame);
+                        return;
+                    }
+
+                    ctx.drawImage(video, 0, 0);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                    // Usar jsQR si está disponible
+                    if (typeof jsQR !== 'undefined') {
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: "dontInvert"
+                        });
+
+                        if (code && code.data) {
+                            console.log('✅ QR encontrado:', code.data);
+                            document.getElementById('qrInput').value = code.data;
+                            validateTicket(code.data);
+                            
+                            scanActive = false;
+                            if (stream) stream.getTracks().forEach(t => t.stop());
+                            video.style.display = 'none';
+                            document.getElementById('scanBtn').textContent = '📸 Escanear';
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    // Continuar intentando
+                }
+
+                if (scanActive) {
+                    requestAnimationFrame(procesarFrame);
+                }
+            };
+
+            procesarFrame();
+        }
+
+        loadTickets();
+    </script>
+</body>
+</html>

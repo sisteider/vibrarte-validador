@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Vibrarte Sertao 2025</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .search-box {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .search-box input,
+        .search-box select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .search-box input:focus,
+        .search-box select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px #667eea;
+        }
+        
+        .table-wrapper {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .table-header {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .table-container {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        table th {
+            background: #f5f5f5;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 2px solid #ddd;
+            position: sticky;
+            top: 0;
+        }
+        
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        table tr.registered {
+            background: #d4edda;
+            font-weight: bold;
+        }
+        
+        table tr:hover {
+            background: #f9f9f9;
+        }
+        
+        table tr.registered:hover {
+            background: #c8e6c9;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .badge.platino {
+            background: #E8F5E9;
+            color: #1B5E20;
+        }
+        
+        .badge.vip {
+            background: #E3F2FD;
+            color: #0D47A1;
+        }
+        
+        .badge.general {
+            background: #FFF3E0;
+            color: #E65100;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .status {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        @media (max-width: 768px) {
+            .search-box {
+                grid-template-columns: 1fr;
+            }
+            
+            table {
+                font-size: 11px;
+            }
+            
+            table td, table th {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Dashboard - Vibrarte Sertao 2025</h1>
+            <p>Vista en tiempo real de asistentes registrados</p>
+        </div>
+        
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Buscar por nombre, silla, email...">
+            <select id="filterCategory">
+                <option value="">Todas las categorías</option>
+                <option value="PLATINO">🏆 Platino</option>
+                <option value="VIP">⭐ VIP</option>
+                <option value="GENERAL">👥 General</option>
+            </select>
+        </div>
+        
+        <div class="table-wrapper">
+            <div class="table-header">
+                <span>📋 Listado Completo de Asistentes</span>
+                <span class="status" id="status">Cargando...</span>
+            </div>
+            <div class="table-container">
+                <table id="registrosTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Categoría</th>
+                            <th>Silla</th>
+                            <th>QR Code</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="7" class="loading">Cargando base de datos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+    
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPj08dOp_2BDh03Rgf8z2qFYa7MIa31aQ",
+            authDomain: "evento-validador-2025.firebaseapp.com",
+            projectId: "evento-validador-2025",
+            storageBucket: "evento-validador-2025.firebasestorage.app",
+            messagingSenderId: "575806749961",
+            appId: "1:575806749961:web:0aed00e91ac8a3901f27d8"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let allTickets = [];
+        let registeredQRCodes = new Set();
+
+        // Cargar todos los tickets (base de datos)
+        async function loadAllTickets() {
+            try {
+                console.log('Cargando tickets...');
+                const snapshot = await db.collection('tickets').get();
+                allTickets = [];
+                snapshot.forEach(doc => {
+                    allTickets.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                console.log('✅ Tickets cargados:', allTickets.length);
+                renderTable();
+                document.getElementById('status').textContent = allTickets.length + ' registros cargados';
+            } catch (error) {
+                console.error('Error cargando tickets:', error);
+                document.getElementById('status').textContent = '⚠️ Error: ' + error.message;
+            }
+        }
+
+        // Escuchar cambios en validations en tiempo real
+        function listenToValidations() {
+            db.collection('validations').onSnapshot(snapshot => {
+                registeredQRCodes.clear();
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    registeredQRCodes.add(data.qr_code);
+                });
+                console.log('🔄 Actualizando registros validados:', registeredQRCodes.size);
+                renderTable();
+            });
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filterCat = document.getElementById('filterCategory').value;
+
+            let filtered = allTickets.filter(t => {
+                const matchSearch = 
+                    (t.nombre || '').toLowerCase().includes(searchTerm) ||
+                    (t.email || '').toLowerCase().includes(searchTerm) ||
+                    (t.asiento || '').toLowerCase().includes(searchTerm) ||
+                    (t.qr_code || '').toLowerCase().includes(searchTerm);
+                
+                const matchCategory = !filterCat || t.tipo === filterCat;
+                return matchSearch && matchCategory;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="loading">No se encontraron resultados</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map((t, i) => {
+                const isRegistered = registeredQRCodes.has(t.qr_code);
+                return `
+                    <tr class="${isRegistered ? 'registered' : ''}">
+                        <td>${i + 1}</td>
+                        <td><strong>${t.nombre || 'N/A'}</strong></td>
+                        <td>${t.email || 'N/A'}</td>
+                        <td><span class="badge ${(t.tipo || '').toLowerCase()}">${t.tipo || 'N/A'}</span></td>
+                        <td>${t.asiento || 'N/A'}</td>
+                        <td><small>${t.qr_code || 'N/A'}</small></td>
+                        <td>${isRegistered ? '✅ ENTRADO' : '⏳ Pendiente'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Eventos de búsqueda
+        document.getElementById('searchInput').addEventListener('keyup', renderTable);
+        document.getElementById('filterCategory').addEventListener('change', renderTable);
+
+        // Iniciar
+        loadAllTickets();
+        listenToValidations();
+    </script>
+</body>
+</html>
