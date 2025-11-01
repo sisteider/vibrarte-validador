@@ -180,7 +180,7 @@
         <div id="modalLimpiar" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; flex-direction: column;">
             <div style="background: white; padding: 30px; border-radius: 10px; max-width: 400px; width: 90%; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
                 <h2 style="margin-bottom: 20px; color: #333;">🔐 Limpiar Registros</h2>
-                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">⚠️ Esto borrará todos los registros de validations en Firebase</p>
+                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">⚠️ Esto borrará todos los registros de validaciones en Firebase</p>
                 <input type="password" id="passwordLimpiar" placeholder="Ingresa contraseña" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 15px; font-size: 14px;">
                 <div style="display: flex; gap: 10px;">
                     <button onclick="confirmarLimpiar()" style="flex: 1; padding: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Limpiar</button>
@@ -209,10 +209,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
-    <script src="https://rawcdn.githack.com/davidshimjs/qrcodejs/gh-pages/qrcode.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/qrcode@0.0.1"></script>
     
     <script>
         const firebaseConfig = {
@@ -273,7 +270,6 @@
             code = code.trim();
             if (!code) return;
 
-            // Si es JSON, extraer el codigo_unico
             let codigoFinal = code;
             try {
                 if (code.startsWith('{')) {
@@ -293,30 +289,33 @@
                 return;
             }
 
-            // ✅ NUEVO: Verificar en Firebase si ya fue escaneado
+            // ✅ CORREGIDO: Verificar en Firebase si ya fue escaneado
             db.collection('validations')
                 .where('qr_code', '==', codigoFinal)
                 .get()
                 .then(snapshot => {
                     if (!snapshot.empty) {
-                        // Ya existe en Firebase
+                        // Ya existe en Firebase = DUPLICADO
                         duplicateTickets.add(codigoFinal);
-                        validatedTickets.delete(codigoFinal);
+                        // ✅ AQUÍ NO BORRAMOS DE validatedTickets
                         updateStats();
                         showResult(`⚠️ DUPLICADO (YA REGISTRADO)\n${ticket.nombre}\nYa fue escaneado en otra entrada`, 'error');
                         addToTable(codigoFinal, ticket.nombre, ticket.email || '?', ticket.tipo, ticket.asiento || '?', getHoraActual(), 'error');
                         return;
                     }
 
-                    // No existe en Firebase, es válido
+                    // No existe en Firebase, es primera vez
                     if (validatedTickets.has(codigoFinal)) {
+                        // Ya está en memoria = DUPLICADO en esta sesión
                         duplicateTickets.add(codigoFinal);
+                        // ✅ AQUÍ NO BORRAMOS DE validatedTickets
                         updateStats();
                         showResult(`⚠️ DUPLICADO\n${ticket.nombre}\nYa fue escaneado en ESTA ENTRADA`, 'error');
                         addToTable(codigoFinal, ticket.nombre, ticket.email || '?', ticket.tipo, ticket.asiento || '?', getHoraActual(), 'error');
                         return;
                     }
 
+                    // ✅ VÁLIDO: Primera vez que se escanea
                     validatedTickets.add(codigoFinal);
                     countByCategory[ticket.tipo]++;
                     updateStats();
@@ -365,7 +364,6 @@
             }
         }
 
-        // Búsqueda manual
         document.getElementById('searchInput').addEventListener('keyup', (e) => {
             const termino = e.target.value.toLowerCase().trim();
             const resultsDiv = document.getElementById('searchResults');
@@ -419,17 +417,6 @@
             setTimeout(() => { resultDiv.style.display = 'none'; }, 3000);
         }
 
-        function limpiarTabla() {
-            if (confirm('¿Estás seguro? Se borrará todo')) {
-                validatedTickets.clear();
-                duplicateTickets.clear();
-                countByCategory = { 'PLATINO': 0, 'VIP': 0, 'GENERAL': 0 };
-                document.getElementById('tableBody').innerHTML = '';
-                updateStats();
-                showResult('✅ Tabla limpiada', 'success');
-            }
-        }
-
         function mostrarModalLimpiar() {
             document.getElementById('modalLimpiar').style.display = 'flex';
             document.getElementById('passwordLimpiar').focus();
@@ -442,7 +429,7 @@
 
         async function confirmarLimpiar() {
             const password = document.getElementById('passwordLimpiar').value;
-            const passwordCorrect = 'admin123'; // CAMBIA ESTO POR TU CONTRASEÑA
+            const passwordCorrect = 'admin123';
             
             if (password !== passwordCorrect) {
                 showResult('❌ Contraseña incorrecta', 'error');
@@ -455,7 +442,6 @@
             }
 
             try {
-                // Borrar de Firebase
                 const batch = db.batch();
                 const snapshot = await db.collection('validations').get();
                 
@@ -465,7 +451,6 @@
                 
                 await batch.commit();
 
-                // Borrar localmente
                 validatedTickets.clear();
                 duplicateTickets.clear();
                 countByCategory = { 'PLATINO': 0, 'VIP': 0, 'GENERAL': 0 };
@@ -498,7 +483,6 @@
             URL.revokeObjectURL(url);
         }
 
-        // Evento para capturar entrada
         document.getElementById('qrInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 validateTicket(e.target.value);
@@ -528,15 +512,10 @@
             }
 
             try {
-                // Intentar con diferentes métodos
                 if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     stream = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: 'environment' },
                         audio: false
-                    });
-                } else if (navigator.getUserMedia) {
-                    stream = await new Promise((resolve, reject) => {
-                        navigator.getUserMedia({ video: { facingMode: 'environment' } }, resolve, reject);
                     });
                 } else {
                     showResult('❌ Tu navegador no soporta acceso a cámara', 'error');
@@ -589,7 +568,6 @@
                     ctx.drawImage(video, 0, 0);
                     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-                    // Usar jsQR si está disponible
                     if (typeof jsQR !== 'undefined') {
                         const code = jsQR(imageData.data, imageData.width, imageData.height, {
                             inversionAttempts: "dontInvert"
